@@ -4,13 +4,18 @@ from tkinter import ttk, messagebox
 import json
 import os
 import pandas as pd
+import webbrowser
 
 url = "https://sky-scanner3.p.rapidapi.com/"
+
+book_url = "https://www.skyscanner.net/transport/flights"
 
 headers = {
     "x-rapidapi-key": "7f845dfacdmsh9ccf1df1065c73bp106024jsn56e9066071dd",
     "x-rapidapi-host": "sky-scanner3.p.rapidapi.com"
 }
+
+df = pd.DataFrame()
 
 def get_airports(city: str) -> dict:
     params = {"query":city}
@@ -40,10 +45,7 @@ def search_flights(AP1:str, AP2:str = None, depart:str = None, year:int = None, 
     if AP2:
         params["toEntityId"] = AP2
         response = requests.get(url + "flights/cheapest-one-way", headers=headers, params=params)
-        df = pd.DataFrame(response.json()["data"])
-        df.sort_values(by="day")
-        a = df.sort_values(by="day").values.tolist()
-        return a
+        return response.json()["data"]
     else:
         params["type"] = "oneway"
         response = requests.get(url + "flights/search-everywhere", headers=headers, params=params)
@@ -112,6 +114,7 @@ def select_airport2():
     departure_city_entry2.insert(0, airport_code2)
 
 def search_flight1():
+    global df
     departure_city = departure_city_entry.get()
     arrival_city = arrival_city_entry.get()
     depart = None
@@ -133,8 +136,10 @@ def search_flight1():
                 depart=depart
             )
         if results:
+            df = pd.DataFrame(results)
+            current_flights = df.sort_values(by="day").values.tolist()
             results_text1.delete(1.0, tk.END)
-            for result in results:
+            for result in current_flights:
                 for i in result:
                     results_text1.insert(tk.END, f"{i} ")
                 results_text1.insert(tk.END, f"\n")
@@ -178,6 +183,39 @@ def search_flight2():
             messagebox.showinfo("Results", "No flights found.")
     except Exception as e:
         messagebox.showerror("Error", str(e))
+
+def sortPrice():
+    global df
+    if not df.empty:
+        try:
+            current_flights = df.sort_values(by="price").values.tolist()
+            results_text1.delete(1.0, tk.END)
+            for result in current_flights:
+                for i in result:
+                    results_text1.insert(tk.END, f"{i} ")
+                results_text1.insert(tk.END, f"\n")
+        except Exception as e:
+            print(e)
+
+def sortDay():
+    global df
+    if not df.empty:
+        try:
+            current_flights = df.sort_values(by="day").values.tolist()
+            results_text1.delete(1.0, tk.END)
+            for result in current_flights:
+                for i in result:
+                    results_text1.insert(tk.END, f"{i} ")
+                results_text1.insert(tk.END, f"\n")
+        except Exception as e:
+            print(e)
+
+def bookflight():
+    departure_city = departure_city_entry.get()
+    arrival_city = arrival_city_entry.get()
+    if departure_city and arrival_city:
+        url = f"{book_url}/{departure_city}/{arrival_city}"
+        webbrowser.open(url)
 
 root = tk.Tk()
 root.title("Flight Finder")
@@ -226,6 +264,15 @@ depart_entry.grid(row=3, column=1, padx=10, pady=5)
 
 search_button1 = tk.Button(flight_search_frame1, text="Search Flights", command=search_flight1)
 search_button1.grid(row=9, column=0, columnspan=2, pady=10)
+
+sort_button1 = tk.Button(flight_search_frame1, text="Sort By Date", command=sortDay)
+sort_button1.grid(row=10, column=0, columnspan=2, pady=10)
+
+sort_button2 = tk.Button(flight_search_frame1, text="Sort By Price", command=sortPrice)
+sort_button2.grid(row=11, column=0, columnspan=2, pady=10)
+
+book_button = tk.Button(flight_search_frame1, text="Book Flight", command=bookflight)
+book_button.grid(row=12, column=0, columnspan=2, pady=10)
 
 results_text1 = tk.Text(root, height=10, width=40)
 results_text1.grid(row=1, column=1, padx=10, pady=10, sticky='nsew')
