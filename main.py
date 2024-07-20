@@ -1,17 +1,16 @@
 import requests
 import tkinter as tk
-from tkinter import ttk, messagebox
-import json
-import os
+from tkinter import messagebox
 import pandas as pd
 import webbrowser
+import datetime
 
 url = "https://sky-scanner3.p.rapidapi.com/"
 
 book_url = "https://www.skyscanner.net/transport/flights"
 
 headers = {
-    "x-rapidapi-key": "7f845dfacdmsh9ccf1df1065c73bp106024jsn56e9066071dd",
+    "x-rapidapi-key": "004359d3f2msh392fcea5cfe0b50p1b738djsnc4eace725973",
     "x-rapidapi-host": "sky-scanner3.p.rapidapi.com"
 }
 
@@ -45,7 +44,10 @@ def search_flights(AP1:str, AP2:str = None, depart:str = None, year:int = None, 
     if AP2:
         params["toEntityId"] = AP2
         response = requests.get(url + "flights/cheapest-one-way", headers=headers, params=params)
-        return response.json()["data"]
+        try:
+            return response.json()["data"]
+        except:
+            return False
     else:
         params["type"] = "oneway"
         response = requests.get(url + "flights/search-everywhere", headers=headers, params=params)
@@ -62,12 +64,12 @@ def search_flights(AP1:str, AP2:str = None, depart:str = None, year:int = None, 
         return flights
 
 def search_airports():
-    city = airport_city_entry.get()
-    if not city:
-        messagebox.showerror("Input Error", "Please enter a city name.")
+    airport = airport_entry.get()
+    if not airport:
+        messagebox.showerror("Input Error", "Please enter a airport name.")
         return
     try:
-        airports = get_airports(city)
+        airports = get_airports(airport)
         airport_list.delete(0, tk.END)
         airport_codes.clear()
         if airports:
@@ -80,12 +82,12 @@ def search_airports():
         messagebox.showerror("Error", str(e))
 
 def search_airports2():
-    city2 = airport_city_entry2.get()
-    if not city2:
-        messagebox.showerror("Input Error", "Please enter a city name.")
+    airport2 = airport_entry2.get()
+    if not airport2:
+        messagebox.showerror("Input Error", "Please enter a airport name.")
         return
     try:
-        airports2 = get_airports(city2)
+        airports2 = get_airports(airport2)
         airport_list2.delete(0, tk.END)
         airport_codes2.clear()
         if airports2:
@@ -101,39 +103,35 @@ def select_airport():
     selected_airport = airport_list.get(airport_list.curselection())
     airport_code = airport_codes[selected_airport]
     if airport_selection_var.get() == "Departure":
-        departure_city_entry.delete(0, tk.END)
-        departure_city_entry.insert(0, airport_code)
+        departure_airport_entry.delete(0, tk.END)
+        departure_airport_entry.insert(0, airport_code)
     else:
-        arrival_city_entry.delete(0, tk.END)
-        arrival_city_entry.insert(0, airport_code)
+        arrival_airport_entry.delete(0, tk.END)
+        arrival_airport_entry.insert(0, airport_code)
 
 def select_airport2():
     selected_airport2 = airport_list2.get(airport_list2.curselection())
     airport_code2 = airport_codes2[selected_airport2]
-    departure_city_entry2.delete(0, tk.END)
-    departure_city_entry2.insert(0, airport_code2)
+    departure_airport_entry2.delete(0, tk.END)
+    departure_airport_entry2.insert(0, airport_code2)
 
 def search_flight1():
     global df
-    departure_city = departure_city_entry.get()
-    arrival_city = arrival_city_entry.get()
-    depart = None
-    try:
-        if depart_entry.get(): depart = depart_entry.get()
-    except ValueError:
-        messagebox.showerror("Input Error", "Please enter a valid number.")
+    departure_airport = departure_airport_entry.get()
+    arrival_airport = arrival_airport_entry.get()
+    if not departure_airport:
+        messagebox.showerror("Input Error", "Please enter a departure airport.")
         return
     
-
-    if not departure_city:
-        messagebox.showerror("Input Error", "Please enter a departure city.")
+    if not arrival_airport:
+        messagebox.showerror("Input Error", "Please enter a arival airport.")
         return
 
     try:
         results = search_flights(
-                AP1=departure_city,
-                AP2=arrival_city,
-                depart=depart
+                AP1=departure_airport,
+                AP2=arrival_airport,
+                depart=datetime.datetime.today().strftime('%Y-%m-%d')
             )
         if results:
             df = pd.DataFrame(results)
@@ -145,33 +143,48 @@ def search_flight1():
                 results_text1.insert(tk.END, f"\n")
         else:
             messagebox.showinfo("Results", "No flights found.")
-            print(results)
     except Exception as e:
         messagebox.showerror("Error", str(e))
 
 def search_flight2():
-    departure_city = departure_city_entry2.get()
+    departure_airport = departure_airport_entry2.get()
+    month = None
     year = None
-    try: 
-        if year_entry2.get(): year = year_entry2.get()
+
+    try:
+        if year_entry2.get(): year = int(year_entry2.get())
+        if year < datetime.datetime.now().year:
+            messagebox.showerror("Input Error", "Please enter a valid year.")
+            return
     except:
         messagebox.showerror("Input Error", "Please enter a valid year.")
         return
-    month = None
-    try: 
-        if month_entry2.get(): month = month_entry2.get()
+    
+    try:
+        if month_entry2.get(): 
+            month = int(month_entry2.get())
+        if month > 12 or month <= datetime.datetime.now().month:
+            messagebox.showerror("Input Error", "Please enter a valid month.")
+            return
     except:
         messagebox.showerror("Input Error", "Please enter a valid month.")
         return
-    if not departure_city:
-        messagebox.showerror("Input Error", "Please enter a departure city.")
+
+    
+
+    if not departure_airport:
+        messagebox.showerror("Input Error", "Please enter a departure airport.")
         return
 
+    
+
+    
+    
     try:
         results = search_flights(
-                AP1=departure_city,
-                year=year,
-                month=month
+                AP1=departure_airport,
+                year=str(year),
+                month=str(month).zfill(2)
         )
         if results:
             results_text2.delete(1.0, tk.END)
@@ -182,7 +195,8 @@ def search_flight2():
         else:
             messagebox.showinfo("Results", "No flights found.")
     except Exception as e:
-        messagebox.showerror("Error", str(e))
+        messagebox.showinfo("Results", "No flights found.")
+
 
 def sortPrice():
     global df
@@ -211,10 +225,10 @@ def sortDay():
             print(e)
 
 def bookflight():
-    departure_city = departure_city_entry.get()
-    arrival_city = arrival_city_entry.get()
-    if departure_city and arrival_city:
-        url = f"{book_url}/{departure_city}/{arrival_city}"
+    departure_airport = departure_airport_entry.get()
+    arrival_airport = arrival_airport_entry.get()
+    if departure_airport and arrival_airport:
+        url = f"{book_url}/{departure_airport}/{arrival_airport}"
         webbrowser.open(url)
 
 root = tk.Tk()
@@ -228,9 +242,9 @@ airport_search_frame = tk.Frame(root)
 airport_search_frame.grid(row=0, column=0, padx=10, pady=10, sticky='nsew')
 
 tk.Label(airport_search_frame, text="Airport Search").grid(row=0, column=0, columnspan=2, padx=10, pady=5, sticky='w')
-tk.Label(airport_search_frame, text="City").grid(row=1, column=0, padx=10, pady=5, sticky='e')
-airport_city_entry = tk.Entry(airport_search_frame)
-airport_city_entry.grid(row=1, column=1, padx=10, pady=5)
+tk.Label(airport_search_frame, text="Airport").grid(row=1, column=0, padx=10, pady=5, sticky='e')
+airport_entry = tk.Entry(airport_search_frame)
+airport_entry.grid(row=1, column=1, padx=10, pady=5)
 search_airport_button = tk.Button(airport_search_frame, text="Search Airports", command=search_airports)
 search_airport_button.grid(row=1, column=2, padx=10, pady=5)
 
@@ -251,16 +265,12 @@ flight_search_frame1.grid(row=1, column=0, padx=10, pady=10, sticky='nsew')
 
 tk.Label(flight_search_frame1, text="Flight Search").grid(row=0, column=0, columnspan=2, padx=10, pady=5, sticky='w')
 tk.Label(flight_search_frame1, text="Departure Airport Code").grid(row=1, column=0, padx=10, pady=5, sticky='e')
-departure_city_entry = tk.Entry(flight_search_frame1)
-departure_city_entry.grid(row=1, column=1, padx=10, pady=5)
+departure_airport_entry = tk.Entry(flight_search_frame1)
+departure_airport_entry.grid(row=1, column=1, padx=10, pady=5)
 
 tk.Label(flight_search_frame1, text="Arrival Airport Code").grid(row=2, column=0, padx=10, pady=5, sticky='e')
-arrival_city_entry = tk.Entry(flight_search_frame1)
-arrival_city_entry.grid(row=2, column=1, padx=10, pady=5)
-
-tk.Label(flight_search_frame1, text="Depart Date(2024-02-14)").grid(row=3, column=0, padx=10, pady=5, sticky='e')
-depart_entry = tk.Entry(flight_search_frame1)
-depart_entry.grid(row=3, column=1, padx=10, pady=5)
+arrival_airport_entry = tk.Entry(flight_search_frame1)
+arrival_airport_entry.grid(row=2, column=1, padx=10, pady=5)
 
 search_button1 = tk.Button(flight_search_frame1, text="Search Flights", command=search_flight1)
 search_button1.grid(row=9, column=0, columnspan=2, pady=10)
@@ -284,9 +294,9 @@ airport_search_frame2 = tk.Frame(root)
 airport_search_frame2.grid(row=0, column=2, padx=10, pady=10, sticky='nsew')
 
 tk.Label(airport_search_frame2, text="Airport Search").grid(row=0, column=2, columnspan=2, padx=10, pady=5, sticky='w')
-tk.Label(airport_search_frame2, text="City").grid(row=1, column=2, padx=10, pady=5, sticky='e')
-airport_city_entry2 = tk.Entry(airport_search_frame2)
-airport_city_entry2.grid(row=1, column=3, padx=10, pady=5)
+tk.Label(airport_search_frame2, text="Airport").grid(row=1, column=2, padx=10, pady=5, sticky='e')
+airport_entry2 = tk.Entry(airport_search_frame2)
+airport_entry2.grid(row=1, column=3, padx=10, pady=5)
 search_airport_button2 = tk.Button(airport_search_frame2, text="Search Airports", command=search_airports2)
 search_airport_button2.grid(row=1, column=4, padx=10, pady=5)
 
@@ -303,8 +313,8 @@ flight_search_frame2.grid(row=1, column=2, padx=10, pady=10, sticky='nsew')
 
 tk.Label(flight_search_frame2, text="Flight Search Everywhere").grid(row=0, column=0, columnspan=2, padx=10, pady=5, sticky='w')
 tk.Label(flight_search_frame2, text="Departure Airport Code").grid(row=1, column=0, padx=10, pady=5, sticky='e')
-departure_city_entry2 = tk.Entry(flight_search_frame2)
-departure_city_entry2.grid(row=1, column=1, padx=10, pady=5)
+departure_airport_entry2 = tk.Entry(flight_search_frame2)
+departure_airport_entry2.grid(row=1, column=1, padx=10, pady=5)
 
 tk.Label(flight_search_frame2, text="Year(2024)").grid(row=3, column=0, padx=10, pady=5, sticky='e')
 year_entry2 = tk.Entry(flight_search_frame2)
